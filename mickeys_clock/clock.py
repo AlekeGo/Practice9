@@ -1,34 +1,79 @@
 import pygame
 import datetime
+import math
+
 
 class MickeyClock:
-    def __init__(self):
-        try:
-            self.image = pygame.image.load('images/mickey_hand.png').convert_alpha()
-        except FileNotFoundError:
-            self.image = pygame.image.load('mickeys_clock/images/mickey_hand.png').convert_alpha()
-        
-        self.center_pos = (400, 400)
-        
-        self.mickey_body = pygame.transform.scale(self.image, (600, 600))
-        self.hand_img = pygame.transform.scale(self.image, (600, 600))
+    def __init__(self, screen, hand_image):
+        self.screen = screen
+        self.hand_image = hand_image
+        self.flipped_hand_image = pygame.transform.flip(hand_image, True, False)
+        self.center = (screen.get_width() // 2, screen.get_height() // 2)
 
-    def rotate_hand(self, image, angle):
-        rotated_image = pygame.transform.rotate(image, -angle)
-        new_rect = rotated_image.get_rect(center=self.center_pos)
-        return rotated_image, new_rect
-
-    def update(self):
+    def get_time_angles(self):
         now = datetime.datetime.now()
-        self.sec_angle = now.second * 6
-        self.min_angle = now.minute * 6
 
-    def draw(self, screen):
-        body_rect = self.mickey_body.get_rect(center=self.center_pos)
-        screen.blit(self.mickey_body, body_rect)
+        seconds = now.second
+        minutes = now.minute
 
-        min_img, min_rect = self.rotate_hand(self.hand_img, self.min_angle)
-        screen.blit(min_img, min_rect)
+        sec_angle = -seconds * 6
+        min_angle = -(minutes + seconds / 60) * 6
 
-        sec_img, sec_rect = self.rotate_hand(self.hand_img, self.sec_angle)
-        screen.blit(sec_img, sec_rect)
+        return sec_angle, min_angle
+
+    def draw_hand(self, image, angle):
+        rotated = pygame.transform.rotate(image, angle)
+        rect = rotated.get_rect(center=self.center)
+        self.screen.blit(rotated, rect)
+
+    def draw_numbers(self):
+        radius = 220
+
+        for num in range(1, 13):
+            if num in [12, 3, 6, 9]:
+                font = pygame.font.SysFont(None, 50)
+            else:
+                font = pygame.font.SysFont(None, 35)
+
+            angle = math.radians((num - 3) * 30)
+
+            x = self.center[0] + radius * math.cos(angle)
+            y = self.center[1] + radius * math.sin(angle)
+
+            text = font.render(str(num), True, (0, 0, 0))
+            rect = text.get_rect(center=(x, y))
+            self.screen.blit(text, rect)
+
+    def draw_ticks(self):
+        for i in range(60):
+            angle = math.radians(i * 6 - 90)
+
+            if i % 5 == 0:
+                inner = 230
+                outer = 250
+                width = 3
+            else:
+                inner = 240
+                outer = 250
+                width = 1
+
+            x1 = self.center[0] + inner * math.cos(angle)
+            y1 = self.center[1] + inner * math.sin(angle)
+
+            x2 = self.center[0] + outer * math.cos(angle)
+            y2 = self.center[1] + outer * math.sin(angle)
+
+            pygame.draw.line(self.screen, (0, 0, 0), (x1, y1), (x2, y2), width)
+
+    def draw_clock_face(self):
+        pygame.draw.circle(self.screen, (0, 0, 0), self.center, 260, 3)
+        self.draw_ticks()
+        self.draw_numbers()
+
+    def draw(self):
+        self.draw_clock_face()
+
+        sec_angle, min_angle = self.get_time_angles()
+
+        self.draw_hand(self.hand_image, sec_angle)
+        self.draw_hand(self.flipped_hand_image, min_angle)
