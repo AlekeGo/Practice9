@@ -1,79 +1,103 @@
-import pygame
-import datetime
 import math
+import datetime
+import pygame
 
 
 class MickeyClock:
-    def __init__(self, screen, hand_image):
+    def __init__(self, screen):  
         self.screen = screen
-        self.hand_image = hand_image
-        self.flipped_hand_image = pygame.transform.flip(hand_image, True, False)
-        self.center = (screen.get_width() // 2, screen.get_height() // 2)
+        self.width, self.height = self.screen.get_size()
+        self.center = (self.width // 2, self.height // 2 + 20)
 
-    def get_time_angles(self):
-        now = datetime.datetime.now()
+        self.bg_color = (245, 245, 245)
+        self.outline_color = (0, 0, 0)
+        self.text_color = (0, 0, 0)
 
-        seconds = now.second
-        minutes = now.minute
+        self.clock_radius = 210
 
-        sec_angle = -seconds * 6
-        min_angle = -(minutes + seconds / 60) * 6
+        self.title_font = pygame.font.SysFont("Arial", 30, bold=True)
+        self.time_font = pygame.font.SysFont("Arial", 40, bold=True)
 
-        return sec_angle, min_angle
+        # load hand image
+        original = pygame.image.load("images/mickey_hand.png").convert_alpha()
 
-    def draw_hand(self, image, angle):
-        rotated = pygame.transform.rotate(image, angle)
-        rect = rotated.get_rect(center=self.center)
-        self.screen.blit(rotated, rect)
+        # resize image
+        self.right_hand = pygame.transform.smoothscale(original, (70, 170))
+        self.left_hand = pygame.transform.flip(self.right_hand, True, False)
 
-    def draw_numbers(self):
-        radius = 220
+    def draw_clock_face(self):
+        self.screen.fill(self.bg_color)
 
-        for num in range(1, 13):
-            if num in [12, 3, 6, 9]:
-                font = pygame.font.SysFont(None, 50)
-            else:
-                font = pygame.font.SysFont(None, 35)
+        title = self.title_font.render("Mickey's Clock", True, self.text_color)
+        title_rect = title.get_rect(center=(self.width // 2, 55))
+        self.screen.blit(title, title_rect)
 
-            angle = math.radians((num - 3) * 30)
+        # big circle
+        pygame.draw.circle(self.screen, self.outline_color, self.center, self.clock_radius, 4)
 
-            x = self.center[0] + radius * math.cos(angle)
-            y = self.center[1] + radius * math.sin(angle)
+        # ears
+        left_ear = (self.center[0] - 105, self.center[1] - 185)
+        right_ear = (self.center[0] + 105, self.center[1] - 185)
+        pygame.draw.circle(self.screen, self.outline_color, left_ear, 45, 4)
+        pygame.draw.circle(self.screen, self.outline_color, right_ear, 45, 4)
 
-            text = font.render(str(num), True, (0, 0, 0))
-            rect = text.get_rect(center=(x, y))
-            self.screen.blit(text, rect)
-
-    def draw_ticks(self):
+        # minute/second marks
         for i in range(60):
             angle = math.radians(i * 6 - 90)
 
+            outer_x = self.center[0] + self.clock_radius * math.cos(angle)
+            outer_y = self.center[1] + self.clock_radius * math.sin(angle)
+
             if i % 5 == 0:
-                inner = 230
-                outer = 250
-                width = 3
+                inner_r = self.clock_radius - 25
+                width = 4
             else:
-                inner = 240
-                outer = 250
-                width = 1
+                inner_r = self.clock_radius - 12
+                width = 2
 
-            x1 = self.center[0] + inner * math.cos(angle)
-            y1 = self.center[1] + inner * math.sin(angle)
+            inner_x = self.center[0] + inner_r * math.cos(angle)
+            inner_y = self.center[1] + inner_r * math.sin(angle)
 
-            x2 = self.center[0] + outer * math.cos(angle)
-            y2 = self.center[1] + outer * math.sin(angle)
+            pygame.draw.line(
+                self.screen,
+                self.outline_color,
+                (inner_x, inner_y),
+                (outer_x, outer_y),
+                width
+            )
 
-            pygame.draw.line(self.screen, (0, 0, 0), (x1, y1), (x2, y2), width)
+    def blit_rotate_pivot(self, image, angle, pivot):
+        image_rect = image.get_rect()
+        pivot_offset = pygame.math.Vector2(0, image_rect.height // 2 - 10)
 
-    def draw_clock_face(self):
-        pygame.draw.circle(self.screen, (0, 0, 0), self.center, 260, 3)
-        self.draw_ticks()
-        self.draw_numbers()
+        rotated_offset = pivot_offset.rotate(-angle)
+        rotated_image = pygame.transform.rotozoom(image, angle, 1.0)
+        rotated_rect = rotated_image.get_rect(
+            center=(pivot[0] - rotated_offset.x, pivot[1] - rotated_offset.y)
+        )
+        self.screen.blit(rotated_image, rotated_rect)
+
+    def draw_hands(self, now):
+        minute = now.minute
+        second = now.second
+
+        minute_angle = -(minute * 6)
+        second_angle = -(second * 6)
+
+        self.blit_rotate_pivot(self.right_hand, minute_angle, self.center)
+        self.blit_rotate_pivot(self.left_hand, second_angle, self.center)
+
+        pygame.draw.circle(self.screen, self.outline_color, self.center, 10)
+
+    def draw_time_text(self, now):
+        text = now.strftime("%M:%S")
+        surf = self.time_font.render(text, True, self.text_color)
+        rect = surf.get_rect(center=(self.width // 2, self.height - 55))
+        self.screen.blit(surf, rect)
 
     def draw(self):
+        now = datetime.datetime.now()
+
         self.draw_clock_face()
-
-        sec_angle, min_angle = self.get_time_angles()
-
-        self.draw_hand(self.hand_image, sec_angle)
-        self.draw_hand(self.flipped_hand_image, min_angle)
+        self.draw_hands(now)
+        self.draw_time_text(now)
