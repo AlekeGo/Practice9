@@ -28,18 +28,14 @@ class MickeyClock:
     def draw_clock_face(self):
         self.screen.fill(self.bg_color)
 
-        title = self.title_font.render("Mickey's Clock", True, self.text_color)
+        title = self.title_font.render("Микки Маустың Сағаты", True, self.text_color)
         title_rect = title.get_rect(center=(self.width // 2, 55))
         self.screen.blit(title, title_rect)
 
         # big circle
         pygame.draw.circle(self.screen, self.outline_color, self.center, self.clock_radius, 4)
 
-        # ears
-        left_ear = (self.center[0] - 105, self.center[1] - 185)
-        right_ear = (self.center[0] + 105, self.center[1] - 185)
-        pygame.draw.circle(self.screen, self.outline_color, left_ear, 45, 4)
-        pygame.draw.circle(self.screen, self.outline_color, right_ear, 45, 4)
+        
 
         # minute/second marks
         for i in range(60):
